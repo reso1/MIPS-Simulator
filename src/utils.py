@@ -67,3 +67,9 @@ def get_first_NZ_idx(word):
         if b == '1':
             return idx+1
     return 0
+
+def list_intersection(a, b):
+    return [val for val in a if val in b]
+
+def list_union(a, b):
+    return list(set(a) | set(b))

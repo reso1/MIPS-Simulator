@@ -1,0 +1,7 @@
+/src/__pycache__/
+
+/test/disassembly.txt
+/test/simulation.txt
+
+/test-pipeline/disassembly.txt
+/test-pipeline/simulation.txt

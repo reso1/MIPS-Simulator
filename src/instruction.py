@@ -10,6 +10,10 @@ SPECIAL_TYPES = {'001000':'JR', '001101':'BREAK', '000000':'SLL', '000010':'SRL'
                 '100000':'ADD', '100010':'SUB', '100100':'AND', '100110':'NOR', '101010':'SLT', 
                 '110000':'ADDI', '110001':'SUBI', '110010':'ANDI', '110011':'NORI', '110101':'SLTI'}
 
+ALU_ISTS = ['ADD', 'SUB', 'AND', 'NOR', 'SLT']    
+ALUB_ISTS = ['SLL', 'SRL', 'SRA', 'MUL'] 
+MEM_ISTS = ['SW', 'LW']           
+
 ################################### BASE INSTRUCION CLASS ###################################
 class ist_obj():
     # virtual funcitons for override
@@ -29,6 +33,9 @@ class J(ist_obj):
         self.name = 'J'
         self.target = _target
         self.PG = _program
+        # used for data-hazard detection
+        self.sregs = []
+        self.dregs = []
 
     # pc must be a list
     def execute(self):
@@ -49,6 +56,10 @@ class JR(ist_obj):
         self.rs = _rs
         self.hint = _hint
         self.PG = _program
+        # used for data-hazard detection
+        self.sregs = [self.rs]
+        self.dregs = []
+
 
     # pc must be a list
     def execute(self):
@@ -70,6 +81,9 @@ class BEQ(ist_obj):
         self.rt = _rt
         self.offset = _offset
         self.PG = _program
+        # used for data-hazard detection
+        self.sregs = [self.rs, self.rt]
+        self.dregs = []
 
     # pc must be a list
     def execute(self):
@@ -92,6 +106,9 @@ class BLTZ(ist_obj):
         self.rs = _rs
         self.offset = _offset
         self.PG = _program
+        # used for data-hazard detection
+        self.sregs = [self.rs]
+        self.dregs = []
 
     # pc must be a list
     def execute(self):
@@ -114,6 +131,9 @@ class BGTZ(ist_obj):
         self.rs = _rs
         self.offset = _offset
         self.PG = _program
+        # used for data-hazard detection
+        self.sregs = [self.rs]
+        self.dregs = []
 
     # pc must be a list
     def execute(self):
@@ -156,11 +176,17 @@ class SW(ist_obj):
         self.rt = _rt
         self.offset = _offset
         self.PG = _program
+        # used for data-hazard detection
+        self.sregs = [self.rt, self.base]
+        self.dregs = []
 
-    def execute(self):
+    def WB(self):
         _p = self.PG
         _p.set_mem_val(_p.get_reg_val(self.base) + self.offset, _p.get_reg_val(self.rt))
-        _p.next()
+    
+    def execute(self):
+        self.WB()
+        self.PG.next()
     
     def get_MIPS(self):
         return 'SW R%d, %d(R%d)'%(self.rt, self.offset, self.base)
@@ -177,11 +203,16 @@ class LW(ist_obj):
         self.rt = _rt
         self.offset = _offset
         self.PG = _program
+        # used for data-hazard detection
+        self.sregs = [self.base]
+        self.dregs = [self.rt]
+    
+    def WB(self):
+        self.PG.set_reg_val(self.rt, self.PG.get_mem_val(self.PG.get_reg_val(self.base) + self.offset))
 
     def execute(self):
-        _p = self.PG
-        _p.set_reg_val(self.rt, _p.get_mem_val(_p.get_reg_val(self.base) + self.offset))
-        _p.next()
+        self.WB()
+        self.PG.next()
     
     def get_MIPS(self):
         return 'LW R%d, %d(R%d)'%(self.rt, self.offset, self.base)
@@ -198,11 +229,16 @@ class SLL(ist_obj):
         self.rd = _rd
         self.sa = _sa
         self.PG = _program
+        # used for data-hazard detection
+        self.sregs = [self.rt]
+        self.dregs = [self.rd]
+
+    def WB(self):
+        self.PG.set_reg_val(self.rd, utils.shiftLogic(self.PG.get_reg_val(self.rt), -self.sa))
 
     def execute(self):
-        _p = self.PG
-        _p.set_reg_val(self.rd, utils.shiftLogic(_p.get_reg_val(self.rt), -self.sa))
-        _p.next()
+        self.WB()
+        self.PG.next()
     
     def get_MIPS(self):
         return 'SLL R%d, R%d, #%d'%(self.rd, self.rt, self.sa)
@@ -219,11 +255,16 @@ class SRL(ist_obj):
         self.rd = _rd
         self.sa = _sa
         self.PG = _program
+        # used for data-hazard detection
+        self.sregs = [self.rt]
+        self.dregs = [self.rd]
+
+    def WB(self):
+        self.PG.set_reg_val(self.rd, utils.shiftLogic(self.PG.get_reg_val(self.rt), self.sa))
 
     def execute(self):
-        _p = self.PG
-        _p.set_reg_val(self.rd, utils.shiftLogic(_p.get_reg_val(self.rt), self.sa))
-        _p.next()
+        self.WB()
+        self.PG.next()
     
     def get_MIPS(self):
         return 'SRL R%d, R%d, #%d'%(self.rd, self.rt, self.sa)
@@ -240,11 +281,16 @@ class SRA(ist_obj):
         self.rd = _rd
         self.sa = _sa
         self.PG = _program
+        # used for data-hazard detection
+        self.sregs = [self.rt]
+        self.dregs = [self.rd]
+
+    def WB(self):
+        self.PG.set_reg_val(self.rd, utils.shiftArith(self.PG.get_reg_val(self.rt), self.sa))
 
     def execute(self):
-        _p = self.PG
-        _p.set_reg_val(self.rd, utils.shiftArith(_p.get_reg_val(self.rt), self.sa))
-        _p.next()
+        self.WB()
+        self.PG.next()
     
     def get_MIPS(self):
         return 'SRA R%d, R%d, #%d'%(self.rd, self.rt, self.sa)
@@ -281,14 +327,24 @@ class ADD(ist_obj):
         self.rt = _rt
         self.rd_imm = _rd_imm
         self.PG = _program
+        # used for data-hazard detection
+        if self.is_imm:
+            self.sregs = [self.rs]
+            self.dregs = [self.rt]
+        else:
+            self.sregs = [self.rs, self.rt]
+            self.dregs = [self.rd_imm]
 
-    def execute(self):
+    def WB(self):
         _p = self.PG
         if self.is_imm:
             _p.set_reg_val(self.rt, _p.get_reg_val(self.rs) + self.rd_imm)
         else:
             _p.set_reg_val(self.rd_imm, _p.get_reg_val(self.rs) + _p.get_reg_val(self.rt))
-        _p.next()
+
+    def execute(self):
+        self.WB()
+        self.PG.next()
     
     def get_MIPS(self):
         if self.is_imm:
@@ -308,14 +364,24 @@ class SUB(ist_obj):
         self.rt = _rt
         self.rd_imm = _rd_imm
         self.PG = _program
+        # used for data-hazard detection
+        if self.is_imm:
+            self.sregs = [self.rs]
+            self.dregs = [self.rt]
+        else:
+            self.sregs = [self.rs, self.rt]
+            self.dregs = [self.rd_imm]
 
-    def execute(self):
+    def WB(self):
         _p = self.PG
         if self.is_imm:
             _p.set_reg_val(self.rt, _p.get_reg_val(self.rs) - self.rd_imm)
         else:
             _p.set_reg_val(self.rd_imm, _p.get_reg_val(self.rs) - _p.get_reg_val(self.rt))
-        _p.next()
+
+    def execute(self):
+        self.WB()
+        self.PG.next()
     
     def get_MIPS(self):
         if self.is_imm:
@@ -335,14 +401,24 @@ class MUL(ist_obj):
         self.rt = _rt
         self.rd_imm = _rd_imm
         self.PG = _program
+        # used for data-hazard detection
+        if self.is_imm:
+            self.sregs = [self.rs]
+            self.dregs = [self.rt]
+        else:
+            self.sregs = [self.rs, self.rt]
+            self.dregs = [self.rd_imm]
 
-    def execute(self):
+    def WB(self):
         _p = self.PG
         if self.is_imm:
             _p.set_reg_val(self.rt, _p.get_reg_val(self.rs) * self.rd_imm)
         else:
             _p.set_reg_val(self.rd_imm, _p.get_reg_val(self.rs) * _p.get_reg_val(self.rt))
-        _p.next()
+
+    def execute(self):
+        self.WB()
+        self.PG.next()
     
     def get_MIPS(self):
         if self.is_imm:
@@ -362,14 +438,24 @@ class AND(ist_obj):
         self.rt = _rt
         self.rd_imm = _rd_imm
         self.PG = _program
+        # used for data-hazard detection
+        if self.is_imm:
+            self.sregs = [self.rs]
+            self.dregs = [self.rt]
+        else:
+            self.sregs = [self.rs, self.rt]
+            self.dregs = [self.rd_imm]
 
-    def execute(self):
+    def WB(self):
         _p = self.PG
         if self.is_imm:
             _p.set_reg_val(self.rt, _p.get_reg_val(self.rs) and self.rd_imm)
         else:
             _p.set_reg_val(self.rd_imm, _p.get_reg_val(self.rs) and _p.get_reg_val(self.rt))
-        _p.next()
+
+    def execute(self):
+        self.WB()
+        self.PG.next()
     
     def get_MIPS(self):
         if self.is_imm:
@@ -389,14 +475,24 @@ class NOR(ist_obj):
         self.rt = _rt
         self.rd_imm = _rd_imm
         self.PG = _program
+        # used for data-hazard detection
+        if self.is_imm:
+            self.sregs = [self.rs]
+            self.dregs = [self.rt]
+        else:
+            self.sregs = [self.rs, self.rt]
+            self.dregs = [self.rd_imm]
 
-    def execute(self):
+    def WB(self):
         _p = self.PG
         if self.is_imm:
-            _p.set_reg_val(self.rt, not _p.get_reg_val(self.rs) or not self.rd_imm)
+            _p.set_reg_val(self.rt, _p.get_reg_val(self.rs) or not self.rd_imm)
         else:
-            _p.set_reg_val(self.rd_imm, not _p.get_reg_val(self.rs) or not _p.get_reg_val(self.rt))
-        _p.next()
+            _p.set_reg_val(self.rd_imm, _p.get_reg_val(self.rs) or not _p.get_reg_val(self.rt))
+
+    def execute(self):
+        self.WB()
+        self.PG.next()
     
     def get_MIPS(self):
         if self.is_imm:
@@ -416,14 +512,24 @@ class SLT(ist_obj):
         self.rt = _rt
         self.rd_imm = _rd_imm
         self.PG = _program
+        # used for data-hazard detection
+        if self.is_imm:
+            self.sregs = [self.rs]
+            self.dregs = [self.rt]
+        else:
+            self.sregs = [self.rs, self.rt]
+            self.dregs = [self.rd_imm]
 
-    def execute(self):
+    def WB(self):
         _p = self.PG
         if self.is_imm:
             _p.set_reg_val(self.rt, _p.get_reg_val(self.rs) < self.rd_imm)
         else:
             _p.set_reg_val(self.rd_imm, _p.get_reg_val(self.rs) < _p.get_reg_val(self.rt))
-        _p.next()
+
+    def execute(self):
+        self.WB()
+        self.PG.next()
     
     def get_MIPS(self):
         if self.is_imm:
