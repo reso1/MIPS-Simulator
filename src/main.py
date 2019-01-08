@@ -470,21 +470,21 @@ class program():
         # pre-ALU 
         tmp = '\tEntry 0:\n\tEntry 1:\n' if len(self.queue_PRE_ALU) == 0 \
             else self.get_queue_buffer_info(self.queue_PRE_ALU, 2)
-        ret_str = 'pre-ALU Queue:\n' + tmp
+        ret_str = 'Pre-ALU Queue:\n' + tmp
         # Post-ALU 
         ret_str += 'Post-ALU Buffer:%s\n'%('['+self.buffer_POST_ALU.get_MIPS()+']' \
             if self.buffer_POST_ALU is not None else '')
         # pre-ALUB
         tmp = '\tEntry 0:\n\tEntry 1:\n' if len(self.queue_PRE_ALUB) == 0 \
             else self.get_queue_buffer_info(self.queue_PRE_ALUB, 2)
-        ret_str += 'pre-ALUB Queue:\n' + tmp
+        ret_str += 'Pre-ALUB Queue:\n' + tmp
         # Post-ALUB 
         ret_str += 'Post-ALUB Buffer:%s\n'%('['+self.buffer_POST_ALUB.get_MIPS()+']' \
             if self.buffer_POST_ALUB is not None else '')
         # pre-MEM 
         tmp = '\tEntry 0:\n\tEntry 1:\n' if len(self.queue_PRE_MEM) == 0 \
             else self.get_queue_buffer_info(self.queue_PRE_MEM, 2)
-        ret_str += 'pre-MEM Queue:\n' + tmp
+        ret_str += 'Pre-MEM Queue:\n' + tmp
         # Post-MEM 
         ret_str += 'Post-MEM Buffer:%s\n'%('['+self.buffer_POST_MEM.get_MIPS()+']' \
             if self.buffer_POST_MEM is not None else '')
